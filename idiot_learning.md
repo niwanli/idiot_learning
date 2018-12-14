@@ -275,6 +275,8 @@ if __name__ == "__main__":
     print('准确率： %.2f%%' % (100 * float(c) / float(len(result))))
 ```
 
+
+
 ### 重新训练后的结果
 
 - 正确分类的样本数： `144`
@@ -283,3 +285,209 @@ if __name__ == "__main__":
 ### 结论
 
 试验后会发现，当使用更多的特征进行训练后，模型在150个样本中，有144个分类正确，正确率为96%，分类效果提高明显。
+
+## 3 决策树
+
+决策树（Decision Tree）是一种简单但是广泛使用的分类器。通过训练数据构建决策树，可以高效地对未知的数据进行分类。
+
+### 训练决策树
+
+```python
+import numpy as np
+from sklearn import tree
+
+def iris_type(s):
+    it = {b'Iris-setosa': 0,
+          b'Iris-versicolor': 1,
+          b'Iris-virginica': 2}
+    return it[s]
+    
+if __name__ == "__main__":
+    # 导入数据data
+    path = 'datasets\iris.data.txt'
+    data = np.loadtxt(path, dtype=float, delimiter=',', converters={4:iris_type})
+    x, y = np.split(data, [4,], axis=1)
+
+    # 划分训练集（x_train，y_train）和测试集（x_test，y_test）
+    # 默认分割为75%的训练集，25%的测试集
+    from sklearn.cross_validation import train_test_split
+    x_train, x_test, y_train, y_test = train_test_split(x, y, random_state=1)
+    print('测试集样本数目：', len(x_test))
+    
+    # 初始化决策树
+    clf = tree.DecisionTreeClassifier()
+    
+    # 训练决策树
+    clf = clf.fit(x_train, y_train)
+    
+    # 预测样本
+    y_predict = clf.predict(x_test)
+    y_test = y_test.reshape(-1)
+    result = y_predict == y_test
+    c = np.count_nonzero(result)
+    print('正确分类的样本数：', c)
+    print('准确率： %.2f%%' % (100 * float(c) / float(len(result))))
+```
+
+### 输出结果
+
+- 测试集样本数目： 38
+- 正确分类的样本数： 37
+- 准确率： 97.37%
+
+> 由于训练测试样本太少，无法看出所训练模型的实际效果如何。
+
+## 4 随机森林
+
+随机森林`Random Forest`，指的是利用多棵树对样本进行训练并预测的一种分类器。它通过对数据集中的子样本进行训练，从而得到多棵决策树，以提高预测的准确性并控制在单棵决策树中极易出现的过拟合情况 。
+
+## 5 支持向量机SVM
+
+### 成人数据集
+
+- 数据集名称：
+  - 训练集：`adult.data.txt`
+  - 测试集：`adult.test.txt`
+
+- 数据集内容：该数据集记录的是一些成年人的基本信息，每条数据有`14`个输入特征和`1`个输出特征。该数据集的目的是：根据一个成人的`14`条基本信息，预测该人一年的薪资是否超过`50K`，`1`表示超过，`-1`表示不超过。
+
+  - 输入特征：
+    `age workclass fnlwgt(final weight) education education-num marital-status occupation relationship race sex captital-gain captital-loss hours-per-week native-country`
+
+  - 输出特征：
+
+    `>50K, <=50K`
+
+**本数据集首先要做的处理是：将连续特征离散化，将有M个类别的离散特征转换为M个二进制特征。**
+
+> 后面，我们使用[LIBSVM](https://www.csie.ntu.edu.tw/~cjlin/libsvm/)对`SVM`模型进行训练、预测。 因此，需要将数据处理成`LIBSVM `所需的数据格式。
+>
+> - `adult.data.txt` --> `a9a.txt`
+> - `adult.test.txt` -->  `a9a.t`
+
+### LIBSVM
+
+- `LIBSVM`参数选项：
+
+```shell
+  -s svm_type : set type of SVM (default 0)
+	0 -- C-SVC
+	1 -- nu-SVC
+	2 -- one-class SVM
+	3 -- epsilon-SVR
+	4 -- nu-SVR
+-t kernel_type : set type of kernel function (default 2)
+	0 -- linear: u'*v
+	1 -- polynomial: (gamma*u'*v + coef0)^degree
+	2 -- radial basis function: exp(-gamma*|u-v|^2)
+	3 -- sigmoid: tanh(gamma*u'*v + coef0)
+-d degree : set degree in kernel function (default 3)
+-g gamma : set gamma in kernel function (default 1/num_features)
+-r coef0 : set coef0 in kernel function (default 0)
+-c cost : set the parameter C of C-SVC, epsilon-SVR, and nu-SVR (default 1)
+-n nu : set the parameter nu of nu-SVC, one-class SVM, and nu-SVR (default 0.5)
+-p epsilon : set the epsilon in loss function of epsilon-SVR (default 0.1)
+-m cachesize : set cache memory size in MB (default 100)
+-e epsilon : set tolerance of termination criterion (default 0.001)
+-h shrinking: whether to use the shrinking heuristics, 0 or 1 (default 1)
+-b probability_estimates: whether to train a SVC or SVR model for probability estimates, 0 or 1 (default 0)
+-wi weight: set the parameter C of class i to weight*C, for C-SVC (default 1)
+```
+
+- 调用`LIBSVM`：
+
+```python
+import os
+from svmutil import *
+
+# 修改系统路径
+os.chdir('tools\libsvm-3.23\python')
+
+# 读取数据
+train_y, train_x = svm_read_problem('../../../datasets/a9a.txt')
+test_y, test_x = svm_read_problem('../../../datasets/a9a.t')
+
+# 训练模型
+m = svm_train(train_y, train_x, '-c 5')
+
+# 测试模型
+p_label, p_acc, p_val = svm_predict(test_y, test_x, m)
+```
+
+### 输出结果
+
+- Accuracy = 84.9702% (13834/16281) (classification)
+
+> 由结果可知，利用`LIBSVM`和`a9a`的训练集得到的`SVM`分类器模型在`a9a`测试集上的分类准确率约为84.97%。
+
+## 6 聚类 
+
+通过`MiniBatchKMeans`，`K-Means`，`SpectralClustering`，`DBSCAN`四种算法解决基本的聚类问题，使用`sklearn`提供的聚类模块和鸢尾花数据集，对聚类效果进行横向比较。
+
+### 评价标准
+
+- **Adjusted Rand Index（ARI）：**
+
+用来计算两组标签之间的相似性，本实验中计算了算法聚类后得到的标签`algorithm.labels_`与数据集中真实类别标签`y`之间的相似性。取值范围：`-1~1`，值越大，相似性越高。
+
+- **Homogeneity（同质性）：**
+
+对于聚类结果中的每一个聚类，它只包含真实类别中的一个类的数据对象。取值范围：`0~1`，值越大，同质性越高。
+
+- **Completeness（完整性）：**
+
+对于真实类别中的一个类的全部数据对象，都被聚类到一个聚类中。取值范围：`0~1`，值越大，完整性越高。
+
+```python
+from sklearn.cluster import MiniBatchKMeans, KMeans, SpectralClustering, DBSCAN
+from sklearn.datasets import load_iris
+from sklearn import metrics
+import pandas as pd
+import numpy as np
+import time
+
+# load dataset
+iris = load_iris()
+x = iris.data
+y = iris.target
+
+# create clustering estimators
+three_means  = MiniBatchKMeans(n_clusters=3)
+kmeans = KMeans(n_clusters=3)
+spectral = SpectralClustering(n_clusters=3, eigen_solver='arpack')
+dbscan = DBSCAN(eps=1.0)
+cluster_algorithms = [three_means, kmeans, spectral, dbscan]
+
+# evaluate the performances of 4 clustering algorithms
+values = []
+for algorithm in cluster_algorithms:
+    t0 = time.time()
+    # training
+    algorithm.fit(x)
+    t1 = time.time()
+    delta_t = t1-t0
+    # metrics
+    ari = metrics.adjusted_rand_score(algorithm.labels_, y)
+    homo = metrics.homogeneity_score(algorithm.labels_, y)
+    compl = metrics.completeness_score(algorithm.labels_, y)
+    scores = [ari, homo, compl, delta_t]
+    values.append(scores)
+
+# output measure values using DataFrame
+cluster_names = ['MiniBatchKMeans', 'KMeans', 'SpectralClustering', 'DBSCAN']
+metrics_names = ['ARI', 'Homo', 'Compl', 'Time']
+df = pd.DataFrame(values, index=cluster_names, columns=metrics_names)
+print(df)
+```
+
+### 输出结果
+
+|                    | ARI      | Homo     | Compl    | Time     |
+| ------------------ | -------- | -------- | -------- | -------- |
+| MiniBatchKMeans    | 0.730238 | 0.764986 | 0.751485 | 0.024001 |
+| KMeans             | 0.730238 | 0.764986 | 0.751485 | 0.038002 |
+| SpectralClustering | 0.743683 | 0.771792 | 0.760365 | 0.036002 |
+| DBSCAN             | 0.568116 | 1.000000 | 0.579380 | 0.003000 |
+
+> 分析可知，DBSCAN聚类速度最快，同质性指标值最高，达到了1.0，换言之，在DBSCAN算法中，聚类出来的每一个聚类都只包含真实类别中的一个类的数据对象，而完整性指标值最低，这是因为DBSCAN算法将低密度区域中的边缘数据对象当作噪声点抛弃，导致完整性不高。KMeans算法和SpectralClustering算法，聚类速度大致相同，SpectralClustering算法的评价指标略优于KMeans算法。MiniBatchKMeans与 KMeans聚类效果相同，但用时更短。
+

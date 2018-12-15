@@ -597,7 +597,9 @@ plt.show()
 
 ### 输出结果2
 
-![](pictures\4.png)
+![](pictures/4.png)
+
+
 
 ##7 EM算法
 

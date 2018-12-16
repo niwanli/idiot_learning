@@ -727,3 +727,67 @@ k1: [0.54300716659941051, 0.19585407145739436, 0.26113876194319507]
 mu1: [2.8156569715274342, 3.2809062129971607, 3.2809062129971629]
 sigma1: [3.1837915155454017, 1.3907640263285175, 1.3907640263285221]
 ```
+## 8 LDA自然语言处理
+
+LDA（Latent Dirichlet Allocation）是一种文档主题生成模型，也称为一个三层贝叶斯概率模型，包含词、主题和文档三层结构。所谓生成模型，就是说，我们认为一篇文章的每个词都是通过“以一定概率选择了某个主题，并从这个主题中以一定概率选择某个词语”这样一个过程得到。文档到主题服从多项式分布，主题到词服从多项式分布。 
+
+LDA是一种非监督机器学习技术，可以用来识别大规模文档集（document collection）或语料库（corpus）中潜藏的主题信息。它采用了词袋（bag of words）的方法，这种方法将每一篇文档视为一个词频向量，从而将文本信息转化为了易于建模的数字信息。但是词袋方法没有考虑词与词之间的顺序，这简化了问题的复杂性，同时也为模型的改进提供了契机。每一篇文档代表了一些主题所构成的一个概率分布，而每一个主题又代表了很多单词所构成的一个概率分布。 
+
+LDA模型的推导过程包括多项式分布、Dirichlet分布和Gibbs抽样等。具体来说，主要在以下几个方面有广泛的应用： 
+（1）通过Dirichlet分布取样获得生成文档的主题分布和生成主题的词语分布。 
+（2）通过主题的多项式分布取样，得到当前文档的对应词语的主题。 
+（3）通过词语的多项式分布采样，得到生成的词语。
+
+### 基于LDA的文章主题生成
+
+```python
+import numpy as np
+import lda
+import lda.datasets
+
+'''
+1.导入数据源
+'''
+#通过LDA库自带的API接口调用路透社的数据
+titles = lda.datasets.load_reuters_titles()
+
+for i in range(395):
+    print(titles[i])
+
+'''
+2.求解P(词语|主题),得到每个主题所包含的单词的分布
+'''
+X = lda.datasets.load_reuters()
+vocab = lda.datasets.load_reuters_vocab()
+titles = lda.datasets.load_reuters_titles()
+#设置主题数目为20个，每个主题包含8个词语，模型迭代次数为1500次
+model = lda.LDA(n_topics=20,n_iter=1500,random_state=1)
+model.fit(X)
+topic_word = model.topic_word_
+n_top_words = 8
+
+for i,topic_dist in enumerate(topic_word):
+    topic_words = np.array(vocab)[np.argsort(topic_dist)][:-(n_top_words+1):-1]
+    #输出每个主题所包含的单词的分布
+    print('Topic{}:{}'.format(i,''.join(topic_words)))
+
+'''
+3.求解P(主题|文档),得到文章所对应的主题
+'''
+doc_topic = model.doc_topic_
+for i in range(20):
+    #输出文章所对应的主题
+    print("{} (top topic:{})".format(titles[i],doc_topic[i].argmax()))
+```
+
+### 输出结果
+
+```python
+INFO:lda:n_documents: 395
+INFO:lda:vocab_size: 4258
+INFO:lda:n_words: 84010
+INFO:lda:n_topics: 20
+INFO:lda:n_iter: 1500
+```
+
+> 由上图可知，调用的**数据集文章数为395**，**文章单词个数为84010**，**文章主题数为20个**。 
